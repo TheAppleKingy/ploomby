@@ -49,17 +49,20 @@ class MessageConsumerRegistry:
     async def register(
             self,
             listen_for: str,
+            message_key_name: str,
             *args,
             **kwargs
     ):
         """
-        Takes over the management of the consumer
+        Uses provided factory to create consumer instance and subscribe it on provided resource. If want to use not built-in factories just define it according to required interface of factore and provide to registry
 
         :param listen_for: Description
         :type listen_for: str
         :param consumer: Description
         :type consumer: MessageConsumer
+        :param args: Args using to provide to create method of consumer factory
+        :param kwargs: Kwargs using to provide to create method of consumer factory
         """
-        consumer = await self._consumer_factory.create(*args, **kwargs)
+        consumer = await self._consumer_factory.create(message_key_name, *args, **kwargs)
         await consumer.consume(listen_for, self._handlers_registry.generate_handler_with_validation_coro)
         self._consumers[listen_for] = consumer
