@@ -1,0 +1,2 @@
+class UnregisteredHandler(Exception):
+    pass
