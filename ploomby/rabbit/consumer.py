@@ -22,10 +22,12 @@ class RabbitConsumer:
             reconnect: bool = True,
     ):
         """
-        :param conn_url: URL for connection with RbbitMQ
-        :type conn_url: str
+        :param connection_dep: Dependency that should returns a coroutine for getting connection 
+        :type connection_dep: Callable[[], Awaitable[AbstractRobustConnection]]
         :param message_key_name: The key is in the header dictionary, which can be used to uniquely identify the incoming message. For example if message_key_name is 'task_name' that means consumer will try to get value from message headers by key 'task_name' and use this value as key to get handler from handlers map
         :type message_key_name: str
+        :param conn_is_shared: Should be True if connection is shared for consumers produced by one factory else False
+        :type conn_is_shared: bool
         :param prefetch_count: Number of unacknowledged messages that consumer can keep at the same time
         :type prefetch_count: int
         :param reconnect: If false an exception will be raised when connection will become lost

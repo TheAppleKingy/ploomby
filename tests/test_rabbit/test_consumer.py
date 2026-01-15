@@ -220,3 +220,14 @@ async def test_factory_nonShared_conn():
     c1 = await fac.create("k1")
     c2 = await fac.create("k2")
     assert not ((fac._connection is c1._connection) and (c1._connection is c2._connection))
+
+
+@pmr
+async def test_factory_disconnect_shared():
+    fac = RabbitConsumerFactory(CONN_URL)
+    c1 = await fac.create("k1")
+    c2 = await fac.create("k2")
+    await c2.disconnect()
+    assert c2._connection is None
+    assert c1._connection is not None
+    assert c1._connection is fac._connection

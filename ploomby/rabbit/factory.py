@@ -9,7 +9,17 @@ from .consumer import RabbitConsumer
 
 
 class RabbitConsumerFactory:
+    """
+    Factory producing instances of consumers per queue.
+    """
+
     def __init__(self, conn_url: str, shared_conn: bool = True):
+        """
+        :param conn_url: URL to connect RabbitMQ
+        :type conn_url: str
+        :param shared_conn: If True all created consumers will have tha same instance of connection
+        :type shared_conn: bool
+        """
         self._conn_url = conn_url
         self._shared_conn = shared_conn
         self._connection: AbstractRobustConnection = None
