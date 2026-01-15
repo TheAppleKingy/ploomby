@@ -11,6 +11,11 @@ from ploomby.abc import (
 )
 from ploomby.logger import logger
 
+__all__ = [
+    "HandlersRegistry",
+    "MessageConsumerRegistry"
+]
+
 
 class HandlersRegistry:
     def __init__(self):

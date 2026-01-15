@@ -1,10 +1,9 @@
 from aio_pika import Message, connect_robust
 from aio_pika.abc import ConsumerTag, AbstractRobustChannel, AbstractRobustQueue, AbstractIncomingMessage, AbstractRobustConnection
 
-from ploomby.abc.exceptions import UnregisteredHandler
+from ploomby.abc.exceptions import UnregisteredHandler, NoConnectionError
 from ploomby.abc import IncomingMessageHandler, RawDataHandler, MessageKeyType, HandlerDependencyType
 from ploomby.logger import logger
-from .exceptions import NoConnectionError
 
 
 class RabbitConsumer:
