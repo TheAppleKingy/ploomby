@@ -1,29 +1,19 @@
 import pytest
+import pytest_asyncio
 import asyncio
 
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 from aio_pika import connect_robust, Message
 from ploomby.rabbit import RabbitConsumer, RabbitConsumerFactory
 from ploomby.abc import NoConnectionError
+from ..conftest import TestModel, teardown, get_publish_chan, CONN_URL, Sensor, pmr
 
 
 def get_consumer(reconnect: bool = True):
-    return RabbitConsumer("amqp://admin:admin@localhost:5672", "task_name", 1, reconnect=reconnect)
+    async def get_conn():
+        return await connect_robust(CONN_URL)
 
-
-async def get_publish_chan():
-    conn = await connect_robust("amqp://admin:admin@localhost:5672")
-    return await conn.channel()
-
-
-class TestModel(BaseModel):
-    id: int
-
-
-class Sensor:
-    def __init__(self, handled: bool = False, exc: bool = False):
-        self.handled = handled
-        self.exc = exc
+    return RabbitConsumer(get_conn, "task_name", prefetch_count=1, reconnect=reconnect)
 
 
 async def ok_handler(dto: TestModel):
@@ -72,9 +62,6 @@ def get_handler_func_with_exc(sensor: Sensor):
         handlrs = {"test_task": raw_handler}
         return handlrs.get(key)
     return get_raw_handler_func
-
-
-pmr = pytest.mark.asyncio
 
 
 @pmr
@@ -212,6 +199,24 @@ async def test_handle_message_unregistered_handler():
 
 @pmr
 async def test_factory_ok():
-    fac = RabbitConsumerFactory("amqp://admin:admin@localhost:5672")
+    fac = RabbitConsumerFactory(CONN_URL)
     consumer = await fac.create("task_name")
     assert consumer._connection
+    await consumer._init_channel()
+    await consumer._channel.queue_delete("test")
+
+
+@pmr
+async def test_factory_shared_conn():
+    fac = RabbitConsumerFactory(CONN_URL)
+    c1 = await fac.create("k1")
+    c2 = await fac.create("k2")
+    assert (fac._connection is c1._connection) and (c1._connection is c2._connection)
+
+
+@pmr
+async def test_factory_nonShared_conn():
+    fac = RabbitConsumerFactory(CONN_URL, False)
+    c1 = await fac.create("k1")
+    c2 = await fac.create("k2")
+    assert not ((fac._connection is c1._connection) and (c1._connection is c2._connection))

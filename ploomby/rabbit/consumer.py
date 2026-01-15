@@ -1,7 +1,9 @@
-from aio_pika import Message, connect_robust
+from typing import Callable, Awaitable
+
+from aio_pika import Message
 from aio_pika.abc import ConsumerTag, AbstractRobustChannel, AbstractRobustQueue, AbstractIncomingMessage, AbstractRobustConnection
 
-from ploomby.abc.exceptions import UnregisteredHandler, NoConnectionError
+from ploomby.abc.exceptions import UnregisteredHandler, NoConnectionError, NoMessageKeyError
 from ploomby.abc import IncomingMessageHandler, RawDataHandler, MessageKeyType, HandlerDependencyType
 from ploomby.logger import logger
 
@@ -13,8 +15,9 @@ class RabbitConsumer:
 
     def __init__(
             self,
-            conn_url: str,
+            connection_dep: Callable[[], Awaitable[AbstractRobustConnection]],
             message_key_name: str,
+            conn_is_shared: bool = True,
             prefetch_count: int = 0,
             reconnect: bool = True,
     ):
@@ -28,8 +31,9 @@ class RabbitConsumer:
         :param reconnect: If false an exception will be raised when connection will become lost
         :type reconnect: bool
         """
+        self._connection_dep = connection_dep
         self._connection: AbstractRobustConnection = None
-        self._conn_url = conn_url
+        self._conn_is_shared = conn_is_shared
         self._queue: AbstractRobustQueue = None
         self._tag: ConsumerTag = None
         self._channel: AbstractRobustChannel = None
@@ -38,21 +42,32 @@ class RabbitConsumer:
         self.message_key_name = message_key_name
         self._handlers_map: dict[MessageKeyType, RawDataHandler] = {}
 
-    async def connect(self) -> None:
-        if not self._connection or self._connection.is_closed:
-            self._connection = await connect_robust(self._conn_url)
+    async def _cancel_queue(self):
+        if self._queue:
+            await self._queue.cancel(self._tag)
+            self._tag = None
+            self._queue = None
 
-    async def disconnect(self) -> None:
+    async def _close_channel(self):
         if self._channel:
             if not self._channel.is_closed:
                 await self._channel.close()
             self._channel = None
-            await self._queue.cancel(self._tag)
-            self._tag = None
 
+    async def _close_conn(self):
         if self._connection:
-            await self._connection.close()
+            if not self._connection.is_closed:
+                if not self._conn_is_shared:
+                    await self._connection.close()
             self._connection = None
+
+    async def connect(self):
+        self._connection = await self._connection_dep()
+
+    async def disconnect(self) -> None:
+        await self._cancel_queue()
+        await self._close_channel()
+        await self._close_conn()
 
     async def _check_connection(self):
         if not self._connection or self._connection.is_closed:
@@ -86,6 +101,9 @@ class RabbitConsumer:
             publisher_answer = b"ACK"
             try:
                 message_key = message.headers.get(self.message_key_name)
+                if not message_key:
+                    raise NoMessageKeyError(
+                        f"Headers do not contain value by key '{self.message_key_name}'")
                 handler = get_handler_func(message_key)
                 if not handler:
                     raise UnregisteredHandler(
@@ -93,7 +111,7 @@ class RabbitConsumer:
                 await handler(message.body.decode())
             except Exception as e:
                 logger.error(
-                    f"Error occured when handled marked '{message_key}' retrieving from '{self._queue.name}': {e}")
+                    f"Error occured when handled message retrieved from '{self._queue.name}': {e}")
                 publisher_answer = b"NACK"
             await message.ack()
             if message.reply_to:
