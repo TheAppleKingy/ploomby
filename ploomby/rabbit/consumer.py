@@ -109,7 +109,7 @@ class RabbitConsumer:
                 validated_coro = get_handler_func(message_key)(message.body.decode())
                 if not validated_coro:
                     raise UnregisteredHandler(
-                        f"Handler with key '{self.message_key_name}' was not registered")
+                        f"Handler of task '{message_key}' was not registered")
                 await validated_coro
             except Exception as e:
                 logger.error(
