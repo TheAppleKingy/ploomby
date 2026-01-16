@@ -106,11 +106,11 @@ class RabbitConsumer:
                 if not message_key:
                     raise NoMessageKeyError(
                         f"Headers do not contain value by key '{self.message_key_name}'")
-                handler = get_handler_func(message_key)
-                if not handler:
+                validated_coro = get_handler_func(message_key)(message.body.decode())
+                if not validated_coro:
                     raise UnregisteredHandler(
                         f"Handler with key '{self.message_key_name}' was not registered")
-                await handler(message.body.decode())
+                await validated_coro
             except Exception as e:
                 logger.error(
                     f"Error occured when handled message retrieved from '{self._queue.name}': {e}")
