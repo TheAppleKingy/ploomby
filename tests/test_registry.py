@@ -34,6 +34,26 @@ async def test_handlers_registry():
 
 
 @pmr
+async def test_handlers_registry_default_handler_name():
+    h_reg = HandlersRegistry()
+    consumer_factory = get_consumer_factory()
+    consumer_registry = MessageConsumerRegistry(h_reg, consumer_factory)
+    sensor = Sensor()
+    await consumer_registry.register("test", "task_name")
+
+    @h_reg.register()
+    async def handler_ok(dto: TestModel):
+        await asyncio.sleep(0)
+        sensor.handled = True
+        return dto.id
+
+    chan = await get_publish_chan()
+    await chan.default_exchange.publish(Message('{"id": 1}'.encode(), headers={"task_name": f"{handler_ok.__name__}"}), "test")
+    await asyncio.sleep(0.1)
+    assert sensor.handled
+
+
+@pmr
 async def test_unregistered_handler():
     h_reg = HandlersRegistry()
     consumer_factory = get_consumer_factory()
@@ -141,3 +161,37 @@ async def test_invalid_data():
     await chan.default_exchange.publish(Message('{"id":asf'.encode(), headers={"task_name": "test_task"}), "test")
     await asyncio.sleep(0.1)
     assert not sensor.handled
+
+
+@pmr
+async def test_a_lot_consumers():
+    hreg = HandlersRegistry()
+    fac = get_consumer_factory()
+    cons_reg = MessageConsumerRegistry(hreg, fac)
+
+    @hreg.register()
+    async def handler_ok(dto: TestModel):
+        await asyncio.sleep(0)
+        return dto.id
+
+    await cons_reg.register("test", "task_name", consumers_count=3)
+    consumers = cons_reg._consumers_map["test"]
+    assert len(consumers) == 3
+    assert consumers[0]._connection is consumers[1]._connection is consumers[2]._connection != None
+
+
+@pmr
+async def test_a_lot_consumers_diff_conns():
+    hreg = HandlersRegistry()
+    fac = RabbitConsumerFactory(CONN_URL, shared_conn=False)
+    cons_reg = MessageConsumerRegistry(hreg, fac)
+
+    @hreg.register()
+    async def handler_ok(dto: TestModel):
+        await asyncio.sleep(0)
+        return dto.id
+
+    await cons_reg.register("test", "task_name", consumers_count=3)
+    consumers = cons_reg._consumers_map["test"]
+    assert len(consumers) == 3
+    assert consumers[0]._connection is not consumers[1]._connection is not consumers[2]._connection
