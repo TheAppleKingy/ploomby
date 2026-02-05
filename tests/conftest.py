@@ -7,11 +7,24 @@ from pydantic import BaseModel
 CONN_URL = "amqp://admin:admin@localhost:5672"
 
 
-@pytest_asyncio.fixture(scope="module", autouse=True)
-async def teardown():
-    yield
+@pytest_asyncio.fixture(scope="function", autouse=True)
+async def rabbitmq_cleanup():
+    yield  # Тест выполняется
+
     chan = await get_publish_chan()
-    await chan.queue_delete("test")
+
+    # Безопасное удаление (не падает если нет)
+    for q in ["test", "test_dlq"]:
+        try:
+            await chan.queue_delete(q)
+        except Exception:
+            pass  # Очередь не существует — ок
+
+    # Exchange тоже
+    try:
+        await chan.exchange_delete("dlx")
+    except Exception:
+        pass
 
 
 async def get_publish_chan():
