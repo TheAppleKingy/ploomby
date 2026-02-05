@@ -28,10 +28,9 @@ class MessageConsumer(Protocol):
             def get_order_handler(key: str) -> Callable[[str | bytes], Awaitable[None]]:
                 handlers = {
                     "order.created": handle_order_created,
-                    "order.updated": handle_order_updated,
-                    "order.cancelled": handle_order_cancelled,
+                    "order.updated": handle_order_updated
                 }
-                return handlers.get(key.decode("utf-8"), default_handler)
+                return handlers.get(key, default_handler)
 
             async def handle_order_created(raw_data: str | bytes) -> None:
                 order_data = json.loads(raw_data)

@@ -114,22 +114,24 @@ Yes, also you can define implementation of consumer.
 Next we make a **MessageConsumerRegistry**. We need literally **register():**
 ```python
 async def register(
-            self,
-            listen_for: str,
-            message_key_name: str,
-            *args,
-            **kwargs
-    ):
-        """
-        Uses provided factory to create consumer instance and subscribe it on provided resource.
-        If want to use not built-in factories just define it according to required interface of factory and provide to registry
+    self,
+    listen_for: str,
+    message_key_name: str,
+    consumers_count: int = 1,
+    *factory_create_args,
+    **factory_create_kwargs
+):
+    """
+    Uses provided factory to create consumer instance and subscribe it on provided resource.
+    If want to use not built-in factories just define it according to required interface of factore and provide to registry
 
-        :param listen_for: Name of representation of what the consumer is subscribed to
-        :type listen_for: str
-        :param message_key_name: Value that consumer should to use to get value from message headers(or other metadata)
-        to identify incoming messsage and get corresponding handler using get_handler_func provided in consume() 
-        :type message_key_name: str
-        :param args: Args using to provide to create method of consumer factory
-        :param kwargs: Kwargs using to provide to create method of consumer factory
-        """
+    :param listen_for: Name of representation of what the consumer is subscribed to
+    :type listen_for: str
+    :param message_key_name: Value that consumer should to use to get value from message headers(or other metadata)
+    to identify incoming messsage and get corresponding handler using get_handler_func provided in consume() 
+    :type message_key_name: str
+    :param consumers_count: Define count of consumers that will listen resource and will looking for message key name
+    :param factory_create_args: Args using to provide to create method of consumer factory
+    :param factory_create_kwargs: Kwargs using to provide to create method of consumer factory
+    """
 ```

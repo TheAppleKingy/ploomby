@@ -93,6 +93,7 @@ class MessageConsumerRegistry:
         :param message_key_name: Value that consumer should to use to get value from message headers(or other metadata)
         to identify incoming messsage and get corresponding handler using get_handler_func provided in consume() 
         :type message_key_name: str
+        :param consumers_count: Define count of consumers that will listen resource and will looking for message key name
         :param factory_create_args: Args using to provide to create method of consumer factory
         :param factory_create_kwargs: Kwargs using to provide to create method of consumer factory
         """
