@@ -29,6 +29,14 @@ class RabbitConsumerFactory(MessageConsumerFactory):
             return self._connection
         return await connect_robust(self._conn_url)
 
+    async def close_connection(self):
+        """
+        Must be called only after calling .disconnect() of all consumers probuced by this factory instance
+        """
+        if self._connection and not self._connection.is_closed:
+            self._connection.close()
+        self._connection = None
+
     async def create(
         self,
         message_key_name: str,

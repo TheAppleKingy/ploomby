@@ -10,6 +10,10 @@ class NoModelProvidedError(Exception):
     pass
 
 
+class HandlerAlreadyExistsError(Exception):
+    pass
+
+
 class NoMessageKeyError(Exception):
     pass
 
